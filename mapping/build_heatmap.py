@@ -16,7 +16,6 @@ assumeRobotAlwaysCentered = True
 
 start_y = None
 start_x = None
-all_imgs = []
 
 def save_to_file(data, name):
     with open(name, "wb") as f:
@@ -25,15 +24,6 @@ def save_to_file(data, name):
 def load_from_file(name):
     with open(name, "rb") as f:
         return pickle.load(f)
-
-def remove_green_tint(img):
-    img_b, img_g, img_r = cv2.split(img) #split by channel
-    img_g = np.uint16(img_g)
-    img_g -= color_shift_intensity
-    np.clip(img_g, 0, 255, out=img_g)
-    img_g = np.uint8(img_g)
-    img = cv2.merge((img_b, img_g, img_r)) #merge adjusted channels
-    return img
 
 def roundToPrecision(x):
     decimals = math.log10(visual_map_precision)
@@ -71,7 +61,9 @@ def add_mapping(color, world_x, world_y, x_conf, y_conf):
         visual_map[x_coord][y_coord][4] = y_conf
 
 def add_img_to_map(data):
-    img, x, y, z = data
+    global start_x
+    global start_y
+    img, x, y, z, start_x, start_y = data
     if assumeRobotAlwaysCentered: x = start_x
     height, width, _ = img.shape
     for r in range(len(img)):
@@ -89,17 +81,6 @@ def add_img_to_map(data):
             world_x = x + x_center_amt*depth*horizontal_fov
             add_mapping(pixel, world_x, world_y, x_confidence, y_confidence)
 
-def image_cb(img, x, y, z):
-    global all_imgs
-    global start_x
-    global start_y
-    if start_x == None: start_x = x
-    if start_y == None: start_y = y
-    #ADD LIVE FEED HERE?
-    img = remove_green_tint(img)
-    all_imgs.append((img,x,y,z))
-    save_to_file(all_imgs, "image_data.sav")
-
 def build_heatmap():
     #make grey black
     #make white true white
@@ -107,11 +88,6 @@ def build_heatmap():
     #etc
     #indicate center points of dead zones (white zones)
     return
-
-def liveFeed():
-    while True:
-        img_data = load_from_file("image_data.sav")
-        cv2.imshow("live", img_data[-1][0])
 
 if __name__ == "__main__":
     img_data = load_from_file("image_data.sav")
