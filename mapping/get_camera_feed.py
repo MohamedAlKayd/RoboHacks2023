@@ -8,9 +8,9 @@ all_imgs = []
 start_y = None
 start_x = None
 
-green_intensity_change = -30 #out of 255
-blue_intensity_change = 40 #out of 255
-red_intensity_change = 0 #out of 255
+green_intensity_change = 0 #out of 255
+blue_intensity_change = 80 #out of 255
+red_intensity_change = 40 #out of 255
 
 def save_to_file(data, name):
     with open(name, "wb") as f:
@@ -48,7 +48,6 @@ def save_img(img, x, y, z):
     global start_y
     if start_x == None: start_x = x
     if start_y == None: start_y = y
-    #ADD LIVE FEED HERE?
     img = balance_colors(img)
     all_imgs.append((img,x,y,z,start_x,start_y))
     save_to_file(all_imgs, pwd + "/image_data.sav")
