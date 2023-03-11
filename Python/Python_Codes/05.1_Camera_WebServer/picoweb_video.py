@@ -4,9 +4,14 @@ import picoweb
 import utime
 import camera
 import gc
+#import machine
+#from machine import I2C,Pin
+#import time
 
-SSID = "********"         # Enter your WiFi name
-PASSWORD = "********"     # Enter your WiFi password
+
+
+SSID = "LP"         # Enter your WiFi name
+PASSWORD = "123321dmy"     # Enter your WiFi password
 
 # Let ESP32 connect to wifi.
 def wifi_connect():
@@ -88,15 +93,25 @@ def send_frame():
 # Video transmission
 def video(req, resp):
     yield from picoweb.start_response(resp, content_type="multipart/x-mixed-replace; boundary=frame")
+    #while True:
+    yield from resp.awrite(next(send_frame()))
+    gc.collect()
+        
+def postion(req,resp):
+    # 13 14
+    
+    yield from picoweb.start_response(resp, content_type="multipart/x-mixed-replace; boundary=frame")
     while True:
         yield from resp.awrite(next(send_frame()))
         gc.collect()
+
 
 
 ROUTES = [
     # You can specify exact URI string matches...
     ("/", index),
     ("/video", video),
+    ("/postion", postion),
 ]
 
 
@@ -116,4 +131,5 @@ if __name__ == '__main__':
     # 0 (False) normal logging: requests and errors
     # 1 (True) debug logging
     # 2 extra debug logging
+
 
