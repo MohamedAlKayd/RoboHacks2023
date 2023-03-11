@@ -7,15 +7,15 @@ from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 import os
 
-horizontal_fov = 66 #degrees
-aspect_ratio = 1200/1600
-vertical_fov = aspect_ratio*horizontal_fov #assuming equal FOV on both axes of lens
-pool_dimensions = [2, 9]
+horizontal_fov = 46 #degrees
+vertical_fov = 66 #assuming equal FOV on both axes of lens
+pool_dimensions = [0.5, 1.83]
 pool_floor_height = 0 #assume pool is on the ground
 
-visual_map_precision = 0.05 #in m
+visual_map_precision = 0.01 #in m
 visual_map = np.zeros((int(pool_dimensions[0]/visual_map_precision), int(pool_dimensions[1]/visual_map_precision), 5))
 assumeRobotAlwaysCentered = True
+degreen_imgs = False
 
 start_y = None
 start_x = None
@@ -30,33 +30,36 @@ def load_from_file(name):
 
 def roundToPrecision(x):
     decimals = math.log10(visual_map_precision)
-    return int(x*(10**decimals))/(10**decimals)
+    return int(x*(10**-decimals))
 
 def add_mapping(color, world_x, world_y, x_conf, y_conf):
     global visual_map
-    x_coord = roundToPrecision(world_x)-start_x
-    y_coord = roundToPrecision(world_y)-start_y
+    x_coord = roundToPrecision(world_x)
+    y_coord = roundToPrecision(world_y)
     if x_coord < 0 or x_coord > visual_map.shape[0]: return
     if y_coord < 0 or y_coord > visual_map.shape[1]: return
     #NOT SURE WHICH IS BEST TAKE EITHER OF IMPLEMENTATIONS BELOW
     #WEIGHTED AVERAGE
-    new_color_conf = (x_conf + y_conf)
-    current_color_conf = (visual_map[x_coord][y_coord][3] + visual_map[x_coord][y_coord][4])
-    total_conf = new_color_conf + current_color_conf
-    visual_map[x_coord][y_coord][0] = (color[0]*new_color_conf + visual_map[x_coord][y_coord][0]*current_color_conf)/total_conf
-    visual_map[x_coord][y_coord][1] = (color[1]*new_color_conf + visual_map[x_coord][y_coord][1]*current_color_conf)/total_conf
-    visual_map[x_coord][y_coord][2] = (color[2]*new_color_conf + visual_map[x_coord][y_coord][2]*current_color_conf)/total_conf
-    visual_map[x_coord][y_coord][3] = (x_conf + visual_map[x_coord][y_coord][3])/2
-    visual_map[x_coord][y_coord][4] = (y_conf + visual_map[x_coord][y_coord][4])/2
-    return
+    # new_color_conf = (x_conf + y_conf)
+    # current_color_conf = (visual_map[x_coord][y_coord][3] + visual_map[x_coord][y_coord][4])
+    # total_conf = new_color_conf + current_color_conf
+    # print(new_color_conf)
+    # print(current_color_conf)
+    # visual_map[x_coord][y_coord][0] = (color[0]*new_color_conf + visual_map[x_coord][y_coord][0]*current_color_conf)/total_conf
+    # visual_map[x_coord][y_coord][1] = (color[1]*new_color_conf + visual_map[x_coord][y_coord][1]*current_color_conf)/total_conf
+    # visual_map[x_coord][y_coord][2] = (color[2]*new_color_conf + visual_map[x_coord][y_coord][2]*current_color_conf)/total_conf
+    # visual_map[x_coord][y_coord][3] = (x_conf + visual_map[x_coord][y_coord][3])/2
+    # visual_map[x_coord][y_coord][4] = (y_conf + visual_map[x_coord][y_coord][4])/2
     #HIGHEST CONFIDENCE WITH PRIORITY ON Y
     if (visual_map[x_coord][y_coord][4] < y_conf):
+        print(color)
         visual_map[x_coord][y_coord][0] = color[0]
         visual_map[x_coord][y_coord][1] = color[1]
         visual_map[x_coord][y_coord][2] = color[2]
         visual_map[x_coord][y_coord][3] = x_conf
         visual_map[x_coord][y_coord][4] = y_conf
     elif (visual_map[x_coord][y_coord][4] == y_conf and visual_map[x_coord][y_coord][3] < x_conf):
+        print(color)
         visual_map[x_coord][y_coord][0] = color[0]
         visual_map[x_coord][y_coord][1] = color[1]
         visual_map[x_coord][y_coord][2] = color[2]
@@ -67,17 +70,16 @@ def add_img_to_map(data):
     global start_x
     global start_y
     img, x, y, z, start_x, start_y = data
-    if assumeRobotAlwaysCentered: x = start_x
     height, width, _ = img.shape
     for r in range(len(img)):
         row = img[r]
-        y_distance_from_center = abs(r-height/2)
+        y_distance_from_center = abs(r-(height/2))
         y_center_amt = y_distance_from_center/(0.5*height)
         y_confidence = 1. - y_center_amt
         depth = z-pool_floor_height
         world_y = y + y_center_amt*depth*vertical_fov
         for p in range(len(row)):
-            x_distance_from_center = abs(p-width/2)
+            x_distance_from_center = abs(p-(width/2))
             x_center_amt = x_distance_from_center/(0.5*width)
             x_confidence = 1. - x_center_amt
             pixel = row[p]
@@ -98,8 +100,6 @@ def build_heatmap(in_map=None):
         visual_map = in_map
     colors = {
     #background
-    'grey':(170, 170, 170),
-    'black':(0, 0, 0),
     #dead coral
     'white':(255, 255, 255),
     #yellow coral
@@ -108,32 +108,29 @@ def build_heatmap(in_map=None):
     'darker_yellow':(65, 207, 163),
     #orange coral
     'orange':(50, 127, 255),
-    'medium_orange':(30, 100, 230),
-    'dark_orange':(20, 90, 180),
+    #'medium_orange':(30, 100, 230),
     #blue coral
     'blue':(255, 0, 0),
-    #'navy_blue':(180, 80, 50)
-    }
-    #'dark_blue':(150, 0, 0)}
+    'navy_blue':(180, 80, 50),
+    'dark_blue':(50, 0, 0)}
+    visual_map = cv2.blur(visual_map, (int(0.025*visual_map.shape[0]), int(0.025*visual_map.shape[1])))
     for r in range(len(visual_map)):
         row = visual_map[r]
         for p in range(len(row)):
             pixel_color = row[p]
             closest_color = ["none", np.inf]
-            if np.std(pixel_color) < 25:
-                if np.mean(pixel_color) > 225:
+            if np.std(pixel_color) < 20:
+                if np.mean(pixel_color) > 150:
                     visual_map[r][p] = (255,255,255)
                 else:
-                    visual_map[r][p] = (0,0,0)
+                    visual_map[r][p] = (255,0,0)
             else:
                 for name, color in colors.items():
                     color_diff = compare_colors(color, pixel_color)
                     if color_diff < closest_color[1]:
                         closest_color[0] = name
                         closest_color[1] = color_diff
-                if closest_color[0] in ['grey','black']:
-                    visual_map[r][p] = (0,0,0)
-                elif closest_color[0] in ['white', 'light_grey']:
+                if closest_color[0] in ['white', 'light_grey']:
                     visual_map[r][p] = (255,255,255)
                 elif closest_color[0] in ['neon_yellow', 'medium_yellow', 'darker_yellow']:
                     visual_map[r][p] = (0,255,255)
@@ -149,8 +146,8 @@ def add_dead_coral_centers():
     # convert the image to grayscale
     gray_image = cv2.cvtColor(visual_map, cv2.COLOR_BGR2GRAY)
 
-    blur_amt = 0.25
-    gray_image = cv2.blur(gray_image, (int(blur_amt*gray_image.shape[0]), int(blur_amt*gray_image.shape[0])))
+    blur_amt = 0.1
+    gray_image = cv2.blur(gray_image, (int(blur_amt*gray_image.shape[0]), int(blur_amt*gray_image.shape[1])))
     
     # convert the grayscale image to binary image
     ret,thresh = cv2.threshold(gray_image,127,255,0)
@@ -167,10 +164,28 @@ def add_dead_coral_centers():
             cY = int(M["m01"] / M["m00"])
             if np.mean(visual_map[cY][cX]) == 255: visual_map[cY][cX] = (0, 0, 255)
 
+def copyMapToImage():
+    new_map = np.zeros((visual_map.shape[0], visual_map.shape[1], 3))
+    for r in range(len(visual_map)):
+        row = visual_map[r]
+        for p in range(len(row)):
+            pixel_color = row[p][0:3]
+            print(pixel_color)
+            new_map[r][p] = pixel_color
+    return new_map
+
+
 if __name__ == "__main__":
     pwd = os.path.realpath(os.path.dirname(__file__))
-    img_data = load_from_file(pwd + "/image_data.sav")
-    for data in img_data:
+    img1 = (cv2.imread(pwd + "/img1.jpg"), 0.3, 0, 0.5, 0.3, 0)
+    img2 = (cv2.imread(pwd + "/img2.jpg"), 0.3, 0.5, 0.5, 0.3, 0)
+    img3 = (cv2.imread(pwd + "/img3.jpg"), 0.3, 1, 0.5, 0.3, 0)
+    img4 = (cv2.imread(pwd + "/img4.jpg"), 0.3, 1.5, 0.5, 0.3, 0)
+
+    for data in [img1, img2, img3, img4]:
         add_img_to_map(data)
+    visual_map = copyMapToImage()
+    cv2.imshow("map", visual_map)
+    cv2.waitKey(0)
     cv2.imshow("heatmap", build_heatmap())
     cv2.waitKey(0)
