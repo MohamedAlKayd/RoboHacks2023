@@ -9,8 +9,6 @@ if __name__ == "__main__":
     cv2.namedWindow("unfiltered", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("unfiltered", 400, 600)    
     img = cv2.imread(pwd + filename)
-    if remove_green:
-        img = balance_colors(img)
     cv2.imshow("unfiltered", img)
     cv2.waitKey(0)
     img = build_heatmap(img)

@@ -114,6 +114,8 @@ def build_heatmap(in_map=None):
     'blue':(255, 0, 0),
     #'navy_blue':(180, 80, 50)
     }
+    blur_amt = 0.1
+    gray_image = cv2.blur(visual_map, (int(blur_amt*visual_map.shape[0]), int(blur_amt*visual_map.shape[0])))
     #'dark_blue':(150, 0, 0)}
     for r in range(len(visual_map)):
         row = visual_map[r]
@@ -121,7 +123,7 @@ def build_heatmap(in_map=None):
             pixel_color = row[p]
             closest_color = ["none", np.inf]
             if np.std(pixel_color) < 25:
-                if np.mean(pixel_color) > 225:
+                if np.mean(pixel_color) > 220:
                     visual_map[r][p] = (255,255,255)
                 else:
                     visual_map[r][p] = (0,0,0)
@@ -149,7 +151,7 @@ def add_dead_coral_centers():
     # convert the image to grayscale
     gray_image = cv2.cvtColor(visual_map, cv2.COLOR_BGR2GRAY)
 
-    blur_amt = 0.25
+    blur_amt = 0.1
     gray_image = cv2.blur(gray_image, (int(blur_amt*gray_image.shape[0]), int(blur_amt*gray_image.shape[0])))
     
     # convert the grayscale image to binary image
